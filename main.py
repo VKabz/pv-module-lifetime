@@ -98,6 +98,11 @@ def main():
         df = physics.calculate_degradation(df, d_ref, Ea_joules, MODULE["n"])
         t_eol, cumulative, years_axis = physics.find_eol_time(df)
 
+        # Среднегодовой (упрощённый) подход — для сравнения методов
+        t_eol_avg, AF_avg_annual, _ = physics.annual_average_lifetime(
+            df, d_ref, Ea_joules, MODULE["n"]
+        )
+
         # Сводные показатели за год
         Tc_avg = df["Tc"].mean()
         RH_avg = df["RH"].mean() * 100
@@ -109,11 +114,14 @@ def main():
         surv25 = survival_probability_at(t_eol, 25, shape_k=3.0) * 100
 
         eol_str = f"{t_eol:.1f}" if pd.notna(t_eol) and t_eol != float("inf") else ">200"
+        # Разница почасового и среднегодового методов, %
+        delta_method = (t_eol_avg - t_eol) / t_eol_avg * 100 if t_eol > 0 else 0
         print(f"\n  {reg['name']} ({reg['climate']}):")
         print(f"     Tc средн. = {Tc_avg:5.1f} °C | RH средн. = {RH_avg:4.1f} % "
               f"| AF = {AF_avg:5.2f} | d_год = {d_year*100:5.2f} %/год")
-        print(f"     Срок службы (до 80 %) = {eol_str} лет | "
-              f"выживание к 25 году = {surv25:.0f} %")
+        print(f"     Срок службы: почасовой = {eol_str} лет | "
+              f"среднегодовой = {t_eol_avg:.1f} лет | разница = {delta_method:.0f} %")
+        print(f"     Выживание к 25 году = {surv25:.0f} %")
 
         results.append({
             "region": f"{reg['name']} ({reg['climate']})",
@@ -132,7 +140,9 @@ def main():
             "RH средн., %": round(RH_avg, 1),
             "AF (почасовой)": round(AF_avg, 2),
             "d_год, %/год": round(d_year * 100, 2),
-            "Срок службы, лет": round(t_eol, 1) if t_eol != float("inf") else None,
+            "Срок службы (почас.), лет": round(t_eol, 1) if t_eol != float("inf") else None,
+            "Срок службы (среднегод.), лет": round(t_eol_avg, 1) if t_eol_avg != float("inf") else None,
+            "Разница методов, %": round(delta_method, 0),
             "Выживание к 25 г., %": round(surv25, 1),
         })
 

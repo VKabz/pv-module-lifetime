@@ -142,6 +142,35 @@ def find_eol_time(df, degradation_target=0.20):
     return t_eol_years, cumulative, years_axis
 
 
+def annual_average_lifetime(df, d_ref, Ea_joules, n, T_ref=298.15, RH_ref=0.5,
+                            degradation_target=0.20):
+    """
+    Срок службы по УПРОЩЁННОМУ среднегодовому подходу (раздел 3.3.1 ВКР).
+
+    В отличие от почасового интегрирования, здесь коэффициент ускорения
+    считается один раз по средним за год температуре ячейки и влажности:
+
+        AF_avg = exp[(Ea/R)(1/T_ref − 1/Tc_avg)] · (RH_avg/RH_ref)^n
+        d_avg  = d_ref · AF_avg
+        t_EOL  = 0.20 / d_avg
+
+    Среднегодовой подход игнорирует нелинейность Аррениуса и поэтому
+    занижает скорость деградации (пиковые летние температуры дают
+    непропорционально большой вклад, который усреднение «срезает»).
+
+    Возвращает (t_eol_years, AF_avg, d_year).
+    """
+    Tc_avg_K = df["Tc"].mean() + 273.15
+    RH_avg = df["RH"].mean()
+
+    AF_avg = np.exp((Ea_joules / R) * (1 / T_ref - 1 / Tc_avg_K)) * (
+        (RH_avg / RH_ref) ** n
+    )
+    d_year = d_ref * AF_avg
+    t_eol = degradation_target / d_year if d_year > 0 else np.inf
+    return t_eol, AF_avg, d_year
+
+
 def calibrate_d_ref_from_dh1000(
     dP_DH=0.05, T_DH=85, RH_DH=0.85, t_DH_hours=1000,
     Ea_ev=0.55, n=2.5, T_ref=298.15, RH_ref=0.5,
