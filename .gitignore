@@ -1,0 +1,20 @@
+# Виртуальное окружение Python
+.venv/
+venv/
+env/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Кэш скачанных данных NASA POWER (восстанавливается запуском)
+data/*.json
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
