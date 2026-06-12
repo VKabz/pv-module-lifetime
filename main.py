@@ -27,10 +27,13 @@ from src import plots
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
-# --- Параметры исследуемого модуля (таблица 2.1 ВКР) ---
+# --- Параметры исследуемого модуля (таблица 2.1 / 3.1 ВКР) ---
+# Значения взяты НАПРЯМУЮ из таблиц ВКР как итоговые параметры модели:
+#   d_ref и Ea приведены в табл. 3.1 как откалиброванные по DH1000 величины.
 MODULE = {
     "NOCT": 45,          # номинальная рабочая температура ячейки, °C
-    "Ea_ev": 0.55,       # энергия активации, эВ (калибруется по DH1000)
+    "d_ref": 0.005,      # опорная скорость деградации при 25 °C / 50 % RH, год⁻¹ (табл. 2.1, 3.1)
+    "Ea_ev": 0.55,       # энергия активации, эВ (табл. 3.1, откалибрована по DH1000)
     "n": 2.5,            # показатель степени влажности (модель Пэка)
     "beta": 30,          # угол наклона панели, град
     "dP_DH": 0.05,       # деградация в тесте DH1000 (5 %)
@@ -58,17 +61,19 @@ def main():
     # ШАГ 1. Калибровка d_ref по тесту DH1000
     # ======================================================================
     line()
-    print("ШАГ 1. Калибровка опорной скорости деградации по тесту DH1000")
+    print("ШАГ 1. Параметры модели (табл. 2.1 / 3.1 ВКР) и проверка по DH1000")
     line()
+    # Итоговые параметры модели берём напрямую из таблиц ВКР
+    d_ref = MODULE["d_ref"]
+    Ea_joules = physics.ev_to_joules(MODULE["Ea_ev"])
+    print(f"  Опорная скорость d_ref   = {d_ref:.4f} год⁻¹ ({d_ref*100:.2f} %/год)  [табл. 2.1/3.1]")
+    print(f"  Энергия активации Ea     = {MODULE['Ea_ev']} эВ = {Ea_joules:.0f} Дж/моль  [табл. 3.1]")
+    # Проверка согласованности с тестом DH1000 (обоснование, не источник d_ref)
     cal = physics.calibrate_d_ref_from_dh1000(
         dP_DH=MODULE["dP_DH"], Ea_ev=MODULE["Ea_ev"], n=MODULE["n"]
     )
-    d_ref = cal["d_ref"]
-    Ea_joules = cal["Ea_joules"]
-    print(f"  Энергия активации Ea     = {MODULE['Ea_ev']} эВ = {Ea_joules:.0f} Дж/моль")
-    print(f"  Коэф. ускорения DH1000   = {cal['AF_DH']:.1f}")
-    print(f"  Эквивалентное время      = {cal['t_eq_years']:.2f} лет в опорных условиях")
-    print(f"  --> Опорная d_ref        = {d_ref:.5f} год⁻¹ ({d_ref*100:.3f} %/год)")
+    print(f"  Проверка: коэф. ускорения DH1000 = {cal['AF_DH']:.1f}, "
+          f"эквивалентное время = {cal['t_eq_years']:.2f} лет")
 
     start = f"{YEAR}0101"
     end = f"{YEAR}1231"
@@ -167,15 +172,16 @@ def main():
     ]
     scenario_results = []
     for sc in SCENARIOS:
-        cal_sc = physics.calibrate_d_ref_from_dh1000(
-            dP_DH=sc["dP_DH"], Ea_ev=MODULE["Ea_ev"], n=MODULE["n"]
-        )
+        # Связь качества модуля и d_ref — линейная (табл. 3.5 ВКР):
+        #   базовый случай ΔP_DH = 5 % соответствует d_ref = 0,5 %/год,
+        #   то есть d_ref = 0,1 · ΔP_DH.
+        d_ref_sc = sc["dP_DH"] * 0.1
         df_sc = physics.calculate_degradation(
-            df_m, cal_sc["d_ref"], Ea_joules, MODULE["n"]
+            df_m, d_ref_sc, Ea_joules, MODULE["n"]
         )
         t_eol_sc, _, _ = physics.find_eol_time(df_sc)
         print(f"  {sc['name']:8s}: ΔP_DH = {sc['dP_DH']*100:4.1f} % "
-              f"-> d_ref = {cal_sc['d_ref']*100:.3f} %/год -> срок службы = {t_eol_sc:.1f} лет")
+              f"-> d_ref = {d_ref_sc*100:.3f} %/год -> срок службы = {t_eol_sc:.1f} лет")
         scenario_results.append({
             "name": sc["name"],
             "dP_DH_percent": sc["dP_DH"] * 100,
