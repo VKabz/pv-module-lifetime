@@ -1,56 +1,55 @@
 @echo off
-chcp 65001 >nul
 REM =====================================================================
-REM  Запуск расчёта срока службы фотоэлектрического модуля (Windows).
-REM  Просто дважды кликните по этому файлу.
+REM  Photovoltaic module service-life calculation launcher (Windows).
+REM  Just double-click this file.
 REM
-REM  При первом запуске скрипт сам создаст окружение Python и установит
-REM  все библиотеки. Последующие запуски — мгновенно.
+REM  On first run it creates a Python environment and installs all
+REM  required libraries. Next runs start instantly.
 REM =====================================================================
 
 cd /d "%~dp0"
 
 echo ======================================================================
-echo   Расчёт срока службы фотоэлектрического модуля
+echo   PV module service-life calculation
 echo ======================================================================
 echo.
 
-REM Проверяем наличие Python
-python --version >nul 2>&1
+REM Check Python is available
+python --version >/dev/null 2>&1
 if errorlevel 1 (
-    echo ОШИБКА: Python не найден.
-    echo Установите Python с сайта https://www.python.org/downloads/
-    echo При установке отметьте галочку "Add Python to PATH".
+    echo ERROR: Python not found.
+    echo Install Python from https://www.python.org/downloads/
+    echo During install, check "Add Python to PATH".
     echo.
     pause
     exit /b 1
 )
 
-REM Создаём виртуальное окружение при первом запуске
+REM Create the virtual environment on first run
 if not exist ".venv" (
-    echo Первый запуск: создаю окружение Python и устанавливаю библиотеки...
-    echo (это займёт 1-2 минуты, нужен интернет^)
+    echo First run: creating Python environment and installing libraries...
+    echo (takes 1-2 minutes, internet required^)
     echo.
     python -m venv .venv
     .venv\Scripts\python -m pip install --quiet --upgrade pip
     .venv\Scripts\pip install --quiet -r requirements.txt
-    echo Окружение готово.
+    echo Environment ready.
     echo.
 )
 
-REM Запускаем расчёт
-echo Выполняю расчёт...
+REM Run the calculation
+echo Running calculation...
 echo.
 .venv\Scripts\python main.py
 
-REM Открываем папку с результатами
+REM Open the results folder
 echo.
-echo Открываю папку с графиками и таблицами...
+echo Opening the folder with charts and tables...
 start "" output
 
 echo.
 echo ======================================================================
-echo   Готово. Графики и таблицы — в папке output\
+echo   Done. Charts and tables are in the output\ folder
 echo ======================================================================
 echo.
 pause
